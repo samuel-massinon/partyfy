@@ -1,0 +1,30 @@
+# Details on this file can be found using "git help ignore" or at: http://git-scm.com/book/en/Git-Basics-Recording-Changes-to-the-Repository#Ignoring-Files
+
+# Compiled python modules.
+*.pyc
+
+# Setuptools distribution folder.
+/dist/
+/build/
+
+# Dependencies the deploy script installed
+/deps/
+
+# Python egg metadata, regenerated from source files by setuptools.
+/*.egg-info
+
+# Ignore system files
+*.swp
+*~
+.DS_Store
+
+# Ignore tox and coverage
+.tox/
+.coverage
+
+# ignore linter
+.coafile
+
+# Ignore venv/
+/venv/
+.python-version
