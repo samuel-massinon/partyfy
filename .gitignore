@@ -28,3 +28,5 @@
 # Ignore venv/
 /venv/
 .python-version
+
+packaged.yaml

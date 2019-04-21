@@ -69,6 +69,8 @@ def partyfy_to_bytes(gif_source, party_num):
     party_frames = partyfy_gif(gif, party_num)
     bytes = BytesIO()
     save_party(party_frames, gif.info, bytes)
+    bytes.seek(0)
+    return bytes
 
 
 def partyfy(gif_source, party_num):
