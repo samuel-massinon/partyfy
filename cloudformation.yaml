@@ -1,0 +1,102 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create and API to Partyfy your GIFs
+
+Parameters:
+  StageName:
+    Type: "String"
+    AllowedPattern: "^[a-z0-9]+$"
+    Default: "test"
+
+Resources:
+  PartyfyLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt PartyfyLambdaRole.Arn
+      Runtime: python3.7
+      Code: ./partyfy
+      Timeout: 60
+
+  PartyfyLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - !Ref PartyfiedBucketAccessPolicy
+
+
+  PartyfiedBucketAccessPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: >-
+        Allow access to put and get from the Partyfied Bucket
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:ListBucket
+            Resource: !Sub arn:aws:s3:::${PartyfiedBucket}
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+            Resource: !Sub arn:aws:s3:::${PartyfiedBucket}/*
+
+  PartyfiedBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      LifecycleConfiguration:
+        Rules:
+          - ExpirationInDays: 1
+            Status: Enabled
+
+  PartyfyApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: PartyfyApi
+      Description: API to Partyfy GIFs
+      BinaryMediaTypes:
+        - GIF
+
+  PartyfyApiGatewayMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: POST
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: !Sub
+        - "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PartyfyLambdaArn}/invocations"
+        - PartyfyLambdaArn: !GetAtt PartyfyLambda.Arn
+      ResourceId: !GetAtt PartyfyApiGateway.RootResourceId
+      RestApiId: !Ref PartyfyApiGateway
+
+  PartyfyApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - PartyfyApiGatewayMethod
+    Properties:
+      RestApiId: !Ref PartyfyApiGateway
+      StageName: !Ref StageName
+
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt PartyfyLambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${PartyfyApiGateway}/*/POST/
+
+Outputs:
+  ApiUrl:
+    Value: !Sub "https://${PartyfyApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${StageName}"
