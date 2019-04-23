@@ -1,7 +1,10 @@
 import json
 from io import BytesIO
+from pathlib import posixpath
 from partyfy import partyfy_to_bytes
-import base64
+import boto3
+s3_client = boto3.client("s3")
+
 
 def lambda_handler(event, context):
     print("Lambda Event: " + json.dumps(event))
@@ -12,7 +15,7 @@ def lambda_handler(event, context):
         gif_in_bytes = grab_gif(event)
         unpartyfied_bytes = BytesIO(gif_in_bytes)
         partyfied_bytes = partyfy_to_bytes(unpartyfied_bytes, 10)
-        response["partyfied_gif"] = prep_response(partyfied_bytes)
+        save_partyfied_gif(partyfied_bytes, event)
         response["status"] = "success"
     except Exception as e:
         print("Error: " + str(e))
@@ -21,13 +24,22 @@ def lambda_handler(event, context):
     return response
 
 
-def prep_response(partyfied_bytes):
-    bytes = partyfied_bytes.read()
-    encoded_bytes = base64.encodebytes(bytes)
-    return encoded_bytes.decode("utf-8")
+def save_partyfied_gif(partyfied_bytes, event):
+    bucket_name = event["Records"][0]["s3"]["bucket"]["name"]
+    object_key = posixpath.join(
+        "partyfied",
+        posixpath.basename(event["Records"][0]["s3"]["object"]["key"]),
+    )
+    s3_client.put_object(
+        Body=partyfied_bytes,
+        Bucket=bucket_name,
+        Key=object_key,
+    )
 
 
 def grab_gif(event):
-    # make sure it's a gif
-    gif_in_bytes = base64.decodestring(bytes(event["body"], "utf-8"))
-    return gif_in_bytes
+    bucket_name = event["Records"][0]["s3"]["bucket"]["name"]
+    object_key = event["Records"][0]["s3"]["object"]["key"]
+    response = s3_client.get_object(Bucket=bucket_name, Key=object_key)
+
+    return response["Body"].read()

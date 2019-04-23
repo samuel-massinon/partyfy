@@ -1,12 +1,7 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Create and API to Partyfy your GIFs
+Description: Partyfy your GIFs
 
-Parameters:
-  StageName:
-    Type: "String"
-    AllowedPattern: "^[a-z0-9]+$"
-    Default: "test"
 
 Resources:
   PartyfyLambda:
@@ -44,12 +39,21 @@ Resources:
           - Effect: Allow
             Action:
               - s3:ListBucket
-            Resource: !Sub arn:aws:s3:::${PartyfiedBucket}
+            Resource: !Sub arn:aws:s3:::${AWS::AccountId}-${AWS::StackName}
           - Effect: Allow
             Action:
               - s3:GetObject
               - s3:PutObject
-            Resource: !Sub arn:aws:s3:::${PartyfiedBucket}/*
+            Resource: !Sub arn:aws:s3:::${AWS::AccountId}-${AWS::StackName}/*
+
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt PartyfyLambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      # SourceArn: !GetAtt PartyfiedBucket.Arn
+      SourceArn: !Sub arn:aws:s3:::${AWS::AccountId}-${AWS::StackName}
 
   PartyfiedBucket:
     Type: AWS::S3::Bucket
@@ -58,45 +62,17 @@ Resources:
         Rules:
           - ExpirationInDays: 1
             Status: Enabled
-
-  PartyfyApiGateway:
-    Type: AWS::ApiGateway::RestApi
-    Properties:
-      Name: PartyfyApi
-      Description: API to Partyfy GIFs
-      BinaryMediaTypes:
-        - GIF
-
-  PartyfyApiGatewayMethod:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      AuthorizationType: NONE
-      HttpMethod: POST
-      Integration:
-        IntegrationHttpMethod: POST
-        Type: AWS_PROXY
-        Uri: !Sub
-        - "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PartyfyLambdaArn}/invocations"
-        - PartyfyLambdaArn: !GetAtt PartyfyLambda.Arn
-      ResourceId: !GetAtt PartyfyApiGateway.RootResourceId
-      RestApiId: !Ref PartyfyApiGateway
-
-  PartyfyApiGatewayDeployment:
-    Type: AWS::ApiGateway::Deployment
-    DependsOn:
-      - PartyfyApiGatewayMethod
-    Properties:
-      RestApiId: !Ref PartyfyApiGateway
-      StageName: !Ref StageName
-
-  LambdaInvokePermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt PartyfyLambda.Arn
-      Action: lambda:InvokeFunction
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${PartyfyApiGateway}/*/POST/
+      BucketName: !Sub "${AWS::AccountId}-${AWS::StackName}"
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Function: !GetAtt PartyfyLambda.Arn
+            Event: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: "prepartyfy/"
 
 Outputs:
-  ApiUrl:
-    Value: !Sub "https://${PartyfyApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${StageName}"
+  BucketName:
+    Value: !Ref PartyfiedBucket
