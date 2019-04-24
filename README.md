@@ -2,9 +2,6 @@
 
 Convert a gif into a party gif!
 
-## Using
-
-TODO
 
 ## Setup
 
@@ -23,7 +20,36 @@ aws cloudformation package \
 Now deploy your stack
 ```sh
 aws cloudformation deploy \
-  --template-file /home/sam/invenia/partyfy/packaged.yaml \
+  --template-file packaged.yaml \
   --capabilities CAPABILITY_IAM \
   --stack-name partyfy
+```
+
+## Using
+
+Let's upload a GIF from CLI
+
+```sh
+export BUCKET_NAME=(
+  aws cloudformation describe-stacks \
+    --stack-name partyfy \
+    --output text \
+    --query "Stacks[0].Outputs[?OutputKey==`BucketName`].OutputValue"
+)
+```
+or if you want to cheat
+```sh
+export BUCKET_NAME=$AWS_ACCOUNT_ID-partyfy
+```
+Upload a file to S3 (`blob-octopus.gif` in this example)
+```sh
+aws s3 cp blob-octopus.gif  s3://$BUCKET_NAME/prepartyfy/
+```
+Check that your file is on S3, or if your GIF has been partyfied
+```sh
+aws s3 ls s3://$BUCKET_NAME --recursive
+```
+Download partyfied GIF. (`blob-octopus.gif` in this example)
+```sh
+aws s3 cp s3://$BUCKET_NAME/partyfied/blob-octopus.gif ~/Downloads/
 ```
