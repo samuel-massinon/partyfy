@@ -2,12 +2,21 @@
 
 Convert a gif into a party gif!
 
+## First time Setup
+
+Have a bucket to package your code to
+```sh
+export AWS_ACCOUNT_ID=(aws sts get-caller-identity --output text --query 'Account')
+export PACKAGE_BUCKET="$AWS_ACCOUNT_ID-package-bucket"
+aws s3api create-bucket --bucket $PACKAGE_BUCKET
+```
 
 ## Setup
 
-You can use CloudFormation to set up Partyfy on your own AWS account.
+You can use CloudFormation to set up Partyfy on your own AWS account
 
-First, use `aws cloudformation package` to upload your code
+First, use `aws cloudformation package` to upload your code.  
+You can ignore the `export`s if `PACKAGE_BUCKET` is already set
 ```sh
 export AWS_ACCOUNT_ID=(aws sts get-caller-identity --output text --query 'Account')
 export PACKAGE_BUCKET="$AWS_ACCOUNT_ID-package-bucket"
