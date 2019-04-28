@@ -19,7 +19,7 @@ def lambda_handler(event, context):
         response["status"] = "success"
     except Exception as e:
         print("Error: " + str(e))
-        response["status"] = "failure"
+        raise
 
     return response
 
